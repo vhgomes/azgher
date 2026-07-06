@@ -36,6 +36,37 @@ type User struct {
 	DeletedAt *time.Time `json:"-" db:"deleted_at"`
 }
 
+func NewUser(
+	id uuid.UUID,
+	name, email string,
+	passwordHash, googleID, avatarURL *string,
+	emailVerified bool,
+	createdAt, updatedAt time.Time,
+) *User {
+	user := &User{
+		ID:            id,
+		Name:          name,
+		Email:         email,
+		EmailVerified: emailVerified,
+		CreatedAt:     createdAt,
+		UpdatedAt:     updatedAt,
+	}
+
+	if passwordHash != nil {
+		user.PasswordHash = *passwordHash
+		user.Providers = append(user.Providers, AuthProviderEmail)
+	}
+	if googleID != nil {
+		user.GoogleID = *googleID
+		user.Providers = append(user.Providers, AuthProviderGoogle)
+	}
+	if avatarURL != nil {
+		user.AvatarURL = *avatarURL
+	}
+
+	return user
+}
+
 func (u *User) IsGoogleUser() bool {
 	return u.GoogleID != ""
 }
@@ -43,20 +74,3 @@ func (u *User) IsGoogleUser() bool {
 func (u *User) IsEmailUser() bool {
 	return u.PasswordHash != ""
 }
-
-/*
- * CREATE TABLE users (
- *     id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
- *     name           TEXT NOT NULL,
- *     email          TEXT NOT NULL UNIQUE,
- *     password_hash  TEXT,
- *     google_id      TEXT UNIQUE,
- *     avatar_url     TEXT,
- *     email_verified BOOLEAN NOT NULL DEFAULT FALSE,
- *     created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
- *     updated_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
- *     deleted_at     TIMESTAMPTZ
- * );
- *
- * CREATE INDEX idx_users_deleted_at ON users (deleted_at);
- */
