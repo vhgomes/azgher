@@ -11,6 +11,8 @@ import (
 	db "github.com/vhgomes/azgher/internal/postgres/db"
 	pgutil "github.com/vhgomes/azgher/internal/postgres/pgutil"
 	errPkg "github.com/vhgomes/azgher/pkg/errors"
+	"github.com/vhgomes/azgher/pkg/logger"
+	"go.uber.org/zap"
 )
 
 type UserRepo struct {
@@ -30,8 +32,11 @@ func (r *UserRepo) Create(ctx context.Context, user *domain.User) (*domain.User,
 		AvatarUrl:    pgutil.NilIfEmpty(user.AvatarURL),
 	})
 	if err != nil {
+		logger.Error("failed to create user", err, zap.String("email", user.Email))
 		return nil, fmt.Errorf("creating user: %w", err)
 	}
+
+	logger.Info("user created", zap.String("user_id", row.ID.String()), zap.String("email", row.Email))
 
 	return domain.NewUser(
 		row.ID, row.Name, row.Email,
@@ -45,11 +50,12 @@ func (r *UserRepo) ByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
 	row, err := r.queries.GetUserByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			logger.Info("user not found", zap.String("user_id", id.String()))
 			return nil, fmt.Errorf("user %s: %w", id, errPkg.ErrUserNotFound)
 		}
+		logger.Error("failed to fetch user by id", err, zap.String("user_id", id.String()))
 		return nil, fmt.Errorf("fetching user %s: %w", id, err)
 	}
-
 	return domain.NewUser(
 		row.ID, row.Name, row.Email,
 		row.PasswordHash, row.GoogleID, row.AvatarUrl,
@@ -62,11 +68,12 @@ func (r *UserRepo) ByEmail(ctx context.Context, email string) (*domain.User, err
 	row, err := r.queries.GetUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			logger.Info("user not found by email", zap.String("email", email))
 			return nil, fmt.Errorf("user with email %s: %w", email, errPkg.ErrUserNotFound)
 		}
+		logger.Error("failed to fetch user by email", err, zap.String("email", email))
 		return nil, fmt.Errorf("fetching user by email %s: %w", email, err)
 	}
-
 	return domain.NewUser(
 		row.ID, row.Name, row.Email,
 		row.PasswordHash, row.GoogleID, row.AvatarUrl,
@@ -79,11 +86,12 @@ func (r *UserRepo) ByGoogleID(ctx context.Context, googleID string) (*domain.Use
 	row, err := r.queries.GetUserByGoogleID(ctx, &googleID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			logger.Info("user not found by google id")
 			return nil, fmt.Errorf("user with google ID: %w", errPkg.ErrUserNotFound)
 		}
+		logger.Error("failed to fetch user by google id", err)
 		return nil, fmt.Errorf("fetching user by google ID: %w", err)
 	}
-
 	return domain.NewUser(
 		row.ID, row.Name, row.Email,
 		row.PasswordHash, row.GoogleID, row.AvatarUrl,
@@ -103,8 +111,11 @@ func (r *UserRepo) Update(ctx context.Context, user *domain.User) (*domain.User,
 		EmailVerified: user.EmailVerified,
 	})
 	if err != nil {
+		logger.Error("failed to update user", err, zap.String("user_id", user.ID.String()))
 		return nil, fmt.Errorf("updating user %s: %w", user.ID, err)
 	}
+
+	logger.Info("user updated", zap.String("user_id", row.ID.String()))
 
 	return domain.NewUser(
 		row.ID, row.Name, row.Email,
@@ -117,8 +128,11 @@ func (r *UserRepo) Update(ctx context.Context, user *domain.User) (*domain.User,
 func (r *UserRepo) SoftDelete(ctx context.Context, id uuid.UUID) error {
 	err := r.queries.SoftDeleteUser(ctx, id)
 	if err != nil {
+		logger.Error("failed to soft delete user", err, zap.String("user_id", id.String()))
 		return fmt.Errorf("soft deleting user %s: %w", id, err)
 	}
+
+	logger.Info("user soft deleted", zap.String("user_id", id.String()))
 	return nil
 }
 
@@ -128,6 +142,7 @@ func (r *UserRepo) List(ctx context.Context, limit, offset int32) ([]domain.User
 		Offset: offset,
 	})
 	if err != nil {
+		logger.Error("failed to list users", err, zap.Int32("limit", limit), zap.Int32("offset", offset))
 		return nil, fmt.Errorf("listing users: %w", err)
 	}
 
@@ -142,5 +157,6 @@ func (r *UserRepo) List(ctx context.Context, limit, offset int32) ([]domain.User
 		users[i] = *u
 	}
 
+	logger.Info("users listed", zap.Int("count", len(users)), zap.Int32("limit", limit), zap.Int32("offset", offset))
 	return users, nil
 }
