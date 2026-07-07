@@ -23,27 +23,21 @@ func NewUserRepo(queries *db.Queries) *UserRepo {
 	return &UserRepo{queries: queries}
 }
 
-func (r *UserRepo) Create(ctx context.Context, user *domain.User) (*domain.User, error) {
-	row, err := r.queries.CreateUser(ctx, db.CreateUserParams{
+func (r *UserRepo) Create(ctx context.Context, user *domain.User) error {
+	_, err := r.queries.CreateUser(ctx, db.CreateUserParams{
 		Name:         user.Name,
 		Email:        user.Email,
 		PasswordHash: pgutil.NilIfEmpty(user.PasswordHash),
 		GoogleID:     pgutil.NilIfEmpty(user.GoogleID),
 		AvatarUrl:    pgutil.NilIfEmpty(user.AvatarURL),
 	})
+
 	if err != nil {
 		logger.Error("failed to create user", err, zap.String("email", user.Email))
-		return nil, fmt.Errorf("creating user: %w", err)
+		return err
 	}
 
-	logger.Info("user created", zap.String("user_id", row.ID.String()), zap.String("email", row.Email))
-
-	return domain.NewUser(
-		row.ID, row.Name, row.Email,
-		row.PasswordHash, row.GoogleID, row.AvatarUrl,
-		row.EmailVerified,
-		row.CreatedAt, row.UpdatedAt,
-	), nil
+	return nil
 }
 
 func (r *UserRepo) ByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
