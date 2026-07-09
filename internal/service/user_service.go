@@ -114,27 +114,23 @@ func (s *UserService) ByGoogleID(ctx context.Context, googleID string) (*domain.
 }
 
 // TODO: precisa ser refatorado
-func (s *UserService) Update(ctx context.Context, user *domain.User) error {
-	existingUser, err := s.repo.ByID(ctx, user.ID)
+func (s *UserService) Update(ctx context.Context, req dto.UpdateUserRequest) error {
+	existingUser, err := s.repo.ByID(ctx, req.ID)
+
 	if err != nil {
 		if errors.Is(err, errPkg.ErrUserNotFound) {
-			logger.Info("user not found", zap.String("id", user.ID.String()))
+			logger.Info("user not found", zap.String("id", req.ID.String()))
 		} else {
 			logger.Error("failed to verify user", err)
 		}
 		return err
 	}
 
-	if existingUser == nil {
-		logger.Info("user not found", zap.String("id", user.ID.String()))
-		return errPkg.ErrUserNotFound
-	}
-
 	// TODO: Temporario, ainda não sei se irei manter isso aqui
 	updatedUser := &domain.User{
-		ID:            existingUser.ID,
-		Name:          existingUser.Name,
-		Email:         existingUser.Email,
+		ID:            req.ID,
+		Name:          req.Name,
+		Email:         req.Email,
 		PasswordHash:  existingUser.PasswordHash,
 		GoogleID:      existingUser.GoogleID,
 		AvatarURL:     existingUser.AvatarURL,
@@ -142,23 +138,6 @@ func (s *UserService) Update(ctx context.Context, user *domain.User) error {
 		CreatedAt:     existingUser.CreatedAt,
 		UpdatedAt:     existingUser.UpdatedAt,
 		DeletedAt:     existingUser.DeletedAt,
-	}
-
-	// TODO: essas verificações são horripilantes, vai ser necessario modificar.
-	if user.Name != "" {
-		updatedUser.Name = user.Name
-	}
-	if user.Email != "" {
-		updatedUser.Email = user.Email
-	}
-	if user.PasswordHash != "" {
-		updatedUser.PasswordHash = user.PasswordHash
-	}
-	if user.GoogleID != "" {
-		updatedUser.GoogleID = user.GoogleID
-	}
-	if user.AvatarURL != "" {
-		updatedUser.AvatarURL = user.AvatarURL
 	}
 
 	_, err = s.repo.Update(ctx, updatedUser)

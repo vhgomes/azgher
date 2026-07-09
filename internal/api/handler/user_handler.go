@@ -122,3 +122,22 @@ func (h *UserHandler) ByGoogleId(c fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(dto.NewUserResponse(user))
 }
+
+func (h *UserHandler) Update(c fiber.Ctx) error {
+	var req dto.UpdateUserRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "invalid payload",
+		})
+	}
+
+	err := h.UserService.Update(c.Context(), req)
+	if err != nil {
+		logger.Error("failed to update user", err, zap.String("email", req.Email))
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "internal error",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON("user updated successfully")
+}

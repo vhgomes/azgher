@@ -14,10 +14,12 @@ type CreateUserRequest struct {
 }
 
 type UpdateUserRequest struct {
-	Name  string `json:"name" validate:"required,min=2,max=100"`
-	Email string `json:"email" validate:"required,email"`
+	ID    uuid.UUID `json:"id" validate:"required,uuid"`
+	Name  string    `json:"name" validate:"required,min=2,max=100"`
+	Email string    `json:"email" validate:"required,email"`
 }
 
+// TODO: precisa modificar essa resposta
 type UserResponse struct {
 	ID            uuid.UUID `json:"id"`
 	Name          string    `json:"name"`
