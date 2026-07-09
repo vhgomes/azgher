@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/vhgomes/azgher/internal/domain"
 	db "github.com/vhgomes/azgher/internal/postgres/db"
 	pgutil "github.com/vhgomes/azgher/internal/postgres/pgutil"
@@ -33,6 +34,11 @@ func (r *UserRepo) Create(ctx context.Context, user *domain.User) error {
 	})
 
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			logger.Info("email already registered", zap.String("email", user.Email))
+			return errPkg.ErrEmailAlreadyRegistered
+		}
 		logger.Error("failed to create user", err, zap.String("email", user.Email))
 		return err
 	}
