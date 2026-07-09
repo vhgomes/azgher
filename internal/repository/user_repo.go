@@ -62,11 +62,11 @@ func (r *UserRepo) ByEmail(ctx context.Context, email string) (*domain.User, err
 	row, err := r.queries.GetUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			logger.Info("user not found by email", zap.String("email", email))
-			return nil, fmt.Errorf("user with email %s: %w", email, errPkg.ErrUserNotFound)
+			logger.Info("user not found by email")
+			return nil, fmt.Errorf("user with email: %w", errPkg.ErrUserNotFound)
 		}
 		logger.Error("failed to fetch user by email", err, zap.String("email", email))
-		return nil, fmt.Errorf("fetching user by email %s: %w", email, err)
+		return nil, fmt.Errorf("fetching user by email: %w", err)
 	}
 	return domain.NewUser(
 		row.ID, row.Name, row.Email,

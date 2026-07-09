@@ -24,7 +24,7 @@ func NewUserService(repo *repository.UserRepo) *UserService {
 }
 
 func (s *UserService) Create(ctx context.Context, req dto.CreateUserRequest) error {
-	logger.Info("verifying if email is already registered", zap.String("email", req.Email))
+	logger.Info("verifying user email registration")
 
 	_, err := s.repo.ByEmail(ctx, req.Email)
 	if err == nil {
@@ -36,7 +36,7 @@ func (s *UserService) Create(ctx context.Context, req dto.CreateUserRequest) err
 		return err
 	}
 
-	logger.Info("creating user", zap.String("name", req.Name), zap.String("email", req.Email))
+	logger.Info("creating user", zap.String("name", req.Name))
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		logger.Error("failed to hash password", err)
@@ -76,12 +76,12 @@ func (s *UserService) ById(ctx context.Context, id string) (*domain.User, error)
 		return nil, err
 	}
 
-	logger.Info("user found", zap.String("name", user.Name), zap.String("email", user.Email))
+	logger.Info("user found", zap.String("user_id", user.ID.String()))
 	return user, nil
 }
 
 func (s *UserService) ByEmail(ctx context.Context, email string) (*domain.User, error) {
-	logger.Info("fetching user by email", zap.String("email", email))
+	logger.Info("fetching user by email")
 
 	user, err := s.repo.ByEmail(ctx, email)
 	if err != nil {
@@ -93,7 +93,7 @@ func (s *UserService) ByEmail(ctx context.Context, email string) (*domain.User, 
 		return nil, err
 	}
 
-	logger.Info("user found", zap.String("name", user.Name), zap.String("email", user.Email))
+	logger.Info("user found", zap.String("user_id", user.ID.String()))
 	return user, nil
 }
 
@@ -110,7 +110,7 @@ func (s *UserService) ByGoogleID(ctx context.Context, googleID string) (*domain.
 		return nil, err
 	}
 
-	logger.Info("user found", zap.String("name", user.Name), zap.String("email", user.Email))
+	logger.Info("user found", zap.String("user_id", user.ID.String()))
 	return user, nil
 }
 
