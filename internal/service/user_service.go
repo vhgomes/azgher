@@ -114,6 +114,7 @@ func (s *UserService) ByGoogleID(ctx context.Context, googleID string) (*domain.
 	return user, nil
 }
 
+// TODO: precisa ser refatorado
 func (s *UserService) Update(ctx context.Context, user *domain.User) error {
 	existingUser, err := s.repo.ByID(ctx, user.ID)
 	if err != nil {
@@ -130,13 +131,44 @@ func (s *UserService) Update(ctx context.Context, user *domain.User) error {
 		return errPkg.ErrUserNotFound
 	}
 
-	_, err = s.repo.Update(ctx, user)
+	// TODO: Temporario, ainda não sei se irei manter isso aqui
+	updatedUser := &domain.User{
+		ID:            existingUser.ID,
+		Name:          existingUser.Name,
+		Email:         existingUser.Email,
+		PasswordHash:  existingUser.PasswordHash,
+		GoogleID:      existingUser.GoogleID,
+		AvatarURL:     existingUser.AvatarURL,
+		EmailVerified: existingUser.EmailVerified,
+		CreatedAt:     existingUser.CreatedAt,
+		UpdatedAt:     existingUser.UpdatedAt,
+		DeletedAt:     existingUser.DeletedAt,
+	}
+
+	// TODO: essas verificações são horripilantes, vai ser necessario modificar.
+	if user.Name != "" {
+		updatedUser.Name = user.Name
+	}
+	if user.Email != "" {
+		updatedUser.Email = user.Email
+	}
+	if user.PasswordHash != "" {
+		updatedUser.PasswordHash = user.PasswordHash
+	}
+	if user.GoogleID != "" {
+		updatedUser.GoogleID = user.GoogleID
+	}
+	if user.AvatarURL != "" {
+		updatedUser.AvatarURL = user.AvatarURL
+	}
+
+	_, err = s.repo.Update(ctx, updatedUser)
 	if err != nil {
 		logger.Error("failed to update user", err)
 		return err
 	}
 
-	logger.Info("user updated", zap.String("id", user.ID.String()))
+	logger.Info("user updated", zap.String("id", updatedUser.ID.String()))
 	return nil
 }
 
