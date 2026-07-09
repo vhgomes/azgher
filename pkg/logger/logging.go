@@ -57,21 +57,21 @@ func getLevelLogs() zapcore.Level {
 
 func Info(msg string, fields ...zap.Field) {
 	log.Info(msg, fields...)
-	log.Sync()
 }
 
 func Error(msg string, err error, fields ...zap.Field) {
 	tags := append(fields, zap.NamedError("error", err))
 	log.Error(msg, tags...)
-	log.Sync()
 }
 
 func Debug(msg string, fields ...zap.Field) {
 	log.Debug(msg, fields...)
-	log.Sync()
 }
 
 func Warn(msg string, fields ...zap.Field) {
 	log.Warn(msg, fields...)
-	log.Sync()
+}
+
+func Sync() error {
+	return log.Sync()
 }

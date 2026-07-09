@@ -89,8 +89,10 @@ func main() {
 
 	if err := router.ShutdownWithContext(ctx); err != nil {
 		logger.Error("server forced to shutdown", err)
+		logger.Sync()
 		os.Exit(1)
 	}
 
 	logger.Info("server stopped gracefully")
+	logger.Sync()
 }
