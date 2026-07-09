@@ -13,14 +13,6 @@ type CreateUserRequest struct {
 	Password string `json:"password" validate:"required,min=8"`
 }
 
-func (r *CreateUserRequest) ToDomain() *domain.User {
-	return &domain.User{
-		Name:         r.Name,
-		Email:        r.Email,
-		PasswordHash: r.Password,
-	}
-}
-
 type UpdateUserRequest struct {
 	Name  string `json:"name" validate:"required,min=2,max=100"`
 	Email string `json:"email" validate:"required,email"`
