@@ -37,9 +37,9 @@ func (h *UserHandler) Create(c fiber.Ctx) error {
 	}
 
 	if err := h.UserService.Create(c.Context(), req); err != nil {
-		if errors.Is(err, errPkg.ErrUserAlreadyExists) {
+		if errors.Is(err, errPkg.ErrEmailAlreadyRegistered) {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
-				"error": "user already exists",
+				"error": "email already registered",
 			})
 		}
 		logger.Error("failed to create user", err, zap.String("email", req.Email))
