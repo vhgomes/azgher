@@ -2,14 +2,17 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/vhgomes/azgher/internal/api/handler"
+	"github.com/vhgomes/azgher/internal/postgres/db"
+	"github.com/vhgomes/azgher/internal/repository"
+	"github.com/vhgomes/azgher/internal/service"
 	"github.com/vhgomes/azgher/pkg/config"
 	"github.com/vhgomes/azgher/pkg/logger"
 	"go.uber.org/zap"
@@ -22,20 +25,26 @@ func main() {
 		os.Exit(1)
 	}
 
-	db, err := sql.Open("postgres", cfg.DatabaseURL)
+	poolConfig, err := pgxpool.ParseConfig(cfg.DatabaseURL)
 	if err != nil {
-		logger.Error("failed to open database connection", err)
+		logger.Error("failed to parse database config", err)
 		os.Exit(1)
 	}
-	defer db.Close()
 
-	db.SetMaxOpenConns(cfg.MaxOpenConns)
-	db.SetMaxIdleConns(cfg.MaxIdleConns)
-	db.SetConnMaxLifetime(5 * time.Minute)
+	poolConfig.MaxConns = int32(cfg.MaxOpenConns)
+	poolConfig.MinConns = int32(cfg.MaxIdleConns)
+	poolConfig.MaxConnLifetime = 5 * time.Minute
+
+	pool, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
+	if err != nil {
+		logger.Error("failed to create database pool", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
 
 	pingCtx, pingCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer pingCancel()
-	if err := db.PingContext(pingCtx); err != nil {
+	if err := pool.Ping(pingCtx); err != nil {
 		logger.Error("failed to connect to database", err)
 		os.Exit(1)
 	}
@@ -46,7 +55,15 @@ func main() {
 		WriteTimeout: 10 * time.Second,
 	})
 
-	// TODO: registrar rotas/handlers aqui
+	queries := db.New(pool)
+	userRepo := repository.NewUserRepo(queries)
+	userService := service.NewUserService(userRepo)
+	userHandler := handler.NewUserHandler(userService)
+
+	router.Post("/users", userHandler.Create)
+	router.Get("/users/:id", userHandler.GetById)
+	router.Get("/users/email/:email", userHandler.GetByEmail)
+	router.Get("/users/google/:google_id", userHandler.ByGoogleId)
 
 	serverErrors := make(chan error, 1)
 	go func() {
