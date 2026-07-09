@@ -159,7 +159,7 @@ func (s *UserService) SoftDelete(ctx context.Context, id uuid.UUID) error {
 	now := time.Now()
 	existingUser.DeletedAt = &now
 
-	_, err = s.repo.Update(ctx, existingUser)
+	err = s.repo.SoftDelete(ctx, id)
 	if err != nil {
 		logger.Error("failed to soft delete user", err)
 		return err
