@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/vhgomes/azgher/internal/api/dto"
@@ -187,9 +186,6 @@ func (s *UserService) SoftDelete(ctx context.Context, id uuid.UUID) error {
 		logger.Info("user not found", zap.String("id", id.String()))
 		return errPkg.ErrUserNotFound
 	}
-
-	now := time.Now()
-	existingUser.DeletedAt = &now
 
 	err = s.repo.SoftDelete(ctx, id)
 	if err != nil {
