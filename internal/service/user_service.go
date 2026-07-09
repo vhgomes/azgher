@@ -2,15 +2,17 @@ package service
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vhgomes/azgher/internal/api/dto"
 	"github.com/vhgomes/azgher/internal/domain"
 	"github.com/vhgomes/azgher/internal/repository"
+	errPkg "github.com/vhgomes/azgher/pkg/errors"
 	"github.com/vhgomes/azgher/pkg/logger"
 	"go.uber.org/zap"
-
-	"github.com/vhgomes/azgher/pkg/errors"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService struct {
@@ -21,26 +23,33 @@ func NewUserService(repo *repository.UserRepo) *UserService {
 	return &UserService{repo: repo}
 }
 
-func (s *UserService) Create(ctx context.Context, dto dto.CreateUserRequest) error {
-	logger.Info("verifing if %s is already registered", zap.String("email", dto.Email))
-	userExists, err := s.repo.ByEmail(ctx, dto.Email)
+func (s *UserService) Create(ctx context.Context, req dto.CreateUserRequest) error {
+	logger.Info("verifying if email is already registered", zap.String("email", req.Email))
 
-	if err != nil {
+	_, err := s.repo.ByEmail(ctx, req.Email)
+	if err == nil {
+		logger.Info("email already registered", zap.String("email", req.Email))
+		return errPkg.ErrEmailAlreadyRegistered
+	}
+	if !errors.Is(err, errPkg.ErrUserNotFound) {
 		logger.Error("failed to verify email", err)
 		return err
 	}
 
-	if userExists != nil {
-		logger.Info("email already registered")
-		return errors.ErrEmailAlreadyRegistered
+	logger.Info("creating user", zap.String("name", req.Name), zap.String("email", req.Email))
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		logger.Error("failed to hash password", err)
+		return err
 	}
 
-	user := dto.ToDomain()
+	user := &domain.User{
+		Name:         req.Name,
+		Email:        req.Email,
+		PasswordHash: string(hashedPassword),
+	}
 
-	logger.Info("creating user", zap.String("name", user.Name), zap.String("email", user.Email))
-	err = s.repo.Create(ctx, user)
-
-	if err != nil {
+	if err := s.repo.Create(ctx, user); err != nil {
 		logger.Error("failed to create user", err)
 		return err
 	}
@@ -48,25 +57,114 @@ func (s *UserService) Create(ctx context.Context, dto dto.CreateUserRequest) err
 	return nil
 }
 
-// TODO: Retornar DTO
-func (s *UserService) ById(ctx context.Context, id int) error {
+func (s *UserService) ById(ctx context.Context, id string) (*domain.User, error) {
+	logger.Info("fetching user by id", zap.String("id", id))
 
+	userID, err := uuid.Parse(id)
+	if err != nil {
+		logger.Error("failed to parse user id", err)
+		return nil, err
+	}
+
+	user, err := s.repo.ByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, errPkg.ErrUserNotFound) {
+			logger.Info("user not found", zap.String("id", id))
+		} else {
+			logger.Error("failed to fetch user by id", err)
+		}
+		return nil, err
+	}
+
+	logger.Info("user found", zap.String("name", user.Name), zap.String("email", user.Email))
+	return user, nil
 }
 
-// TODO: Retornar DTO
-func (s *UserService) ByEmail(ctx context.Context, email string) error {
+func (s *UserService) ByEmail(ctx context.Context, email string) (*domain.User, error) {
+	logger.Info("fetching user by email", zap.String("email", email))
 
+	user, err := s.repo.ByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, errPkg.ErrUserNotFound) {
+			logger.Info("user not found", zap.String("email", email))
+		} else {
+			logger.Error("failed to fetch user by email", err)
+		}
+		return nil, err
+	}
+
+	logger.Info("user found", zap.String("name", user.Name), zap.String("email", user.Email))
+	return user, nil
 }
 
-// TODO: Retornar DTO
-func (s *UserService) ByGoogleID(ctx context.Context, googleID string) error {
+func (s *UserService) ByGoogleID(ctx context.Context, googleID string) (*domain.User, error) {
+	logger.Info("fetching user by google id", zap.String("google_id", googleID))
 
+	user, err := s.repo.ByGoogleID(ctx, googleID)
+	if err != nil {
+		if errors.Is(err, errPkg.ErrUserNotFound) {
+			logger.Info("user not found", zap.String("google_id", googleID))
+		} else {
+			logger.Error("failed to fetch user by google id", err)
+		}
+		return nil, err
+	}
+
+	logger.Info("user found", zap.String("name", user.Name), zap.String("email", user.Email))
+	return user, nil
 }
 
 func (s *UserService) Update(ctx context.Context, user *domain.User) error {
+	existingUser, err := s.repo.ByID(ctx, user.ID)
+	if err != nil {
+		if errors.Is(err, errPkg.ErrUserNotFound) {
+			logger.Info("user not found", zap.String("id", user.ID.String()))
+		} else {
+			logger.Error("failed to verify user", err)
+		}
+		return err
+	}
 
+	if existingUser == nil {
+		logger.Info("user not found", zap.String("id", user.ID.String()))
+		return errPkg.ErrUserNotFound
+	}
+
+	_, err = s.repo.Update(ctx, user)
+	if err != nil {
+		logger.Error("failed to update user", err)
+		return err
+	}
+
+	logger.Info("user updated", zap.String("id", user.ID.String()))
+	return nil
 }
 
 func (s *UserService) SoftDelete(ctx context.Context, id uuid.UUID) error {
+	existingUser, err := s.repo.ByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, errPkg.ErrUserNotFound) {
+			logger.Info("user not found", zap.String("id", id.String()))
+		} else {
+			logger.Error("failed to verify user", err)
+		}
+		return err
+	}
 
+	if existingUser == nil {
+		logger.Info("user not found", zap.String("id", id.String()))
+		return errPkg.ErrUserNotFound
+	}
+
+	now := time.Now()
+	existingUser.DeletedAt = &now
+
+	_, err = s.repo.Update(ctx, existingUser)
+	if err != nil {
+		logger.Error("failed to soft delete user", err)
+		return err
+	}
+
+	logger.Info("user soft deleted", zap.String("id", id.String()))
+	return nil
 }
