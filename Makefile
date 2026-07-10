@@ -75,6 +75,10 @@ migrate-up: ## Apply all pending migrations
 migrate-down: ## Rollback the last migration
 	$(MIGRATE) -database "$(DATABASE_URL)" -path $(MIGRATIONS_PATH) down 1
 
+migrate-reset: ## Drop all migrations and reapply (clean slate)
+	$(MIGRATE) -database "$(DATABASE_URL)" -path $(MIGRATIONS_PATH) down -all
+	$(MIGRATE) -database "$(DATABASE_URL)" -path $(MIGRATIONS_PATH) up
+
 migrate-force: ## Force a specific migration version (usage: make migrate-force VERSION=1)
 ifndef VERSION
 	$(error VERSION is required. Example: make migrate-force VERSION=1)
