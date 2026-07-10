@@ -138,6 +138,12 @@ func (h *UserHandler) Update(c fiber.Ctx) error {
 		})
 	}
 
+	if validationErrs := validator.Validate(&req); validationErrs != nil {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
+			"errors": validationErrs,
+		})
+	}
+
 	err := h.UserService.Update(c.Context(), req)
 	if err != nil {
 		logger.Error("failed to update user", err, zap.String("email", req.Email))
