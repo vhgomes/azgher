@@ -19,6 +19,11 @@ import (
 )
 
 func main() {
+	if err := logger.Init(); err != nil {
+		os.Stderr.WriteString("failed to initialize logger: " + err.Error() + "\n")
+		os.Exit(1)
+	}
+
 	cfg, err := config.Load()
 	if err != nil {
 		logger.Error("failed to load config", err)
