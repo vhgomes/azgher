@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 	"github.com/vhgomes/azgher/internal/api/dto"
 	"github.com/vhgomes/azgher/internal/service"
 	errPkg "github.com/vhgomes/azgher/pkg/errors"
@@ -56,6 +57,12 @@ func (h *UserHandler) GetById(c fiber.Ctx) error {
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "id is required",
+		})
+	}
+
+	if _, err := uuid.Parse(id); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "invalid uuid format",
 		})
 	}
 
