@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/gofiber/fiber/v3/log"
 )
 
 type Config struct {
@@ -21,6 +23,7 @@ func Load() (*Config, error) {
 	}
 
 	databaseURL := os.Getenv("DATABASE_URL")
+	log.Info(databaseURL)
 	if databaseURL == "" {
 		return nil, fmt.Errorf("DATABASE_URL environment variable is required (e.g., postgres://user:pass@localhost:5432/db?sslmode=disable)")
 	}
