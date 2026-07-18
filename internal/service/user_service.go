@@ -140,7 +140,7 @@ func (s *UserService) Update(ctx context.Context, req dto.UpdateUserRequest) err
 		DeletedAt:     existingUser.DeletedAt,
 	}
 
-	_, err = s.repo.Update(ctx, updatedUser)
+	err = s.repo.Update(ctx, updatedUser)
 	if err != nil {
 		logger.Error("failed to update user", err)
 		return err
