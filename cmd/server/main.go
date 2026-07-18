@@ -67,6 +67,7 @@ func main() {
 
 	router.Post("/users", userHandler.Create)
 	router.Get("/users/:id", userHandler.GetById)
+	router.Put("/users/:id", userHandler.Update)
 	router.Get("/users/email/:email", userHandler.GetByEmail)
 	router.Get("/users/google/:google_id", userHandler.ByGoogleId)
 
