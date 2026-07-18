@@ -100,7 +100,7 @@ func (r *UserRepo) ByGoogleID(ctx context.Context, googleID string) (*domain.Use
 	), nil
 }
 
-func (r *UserRepo) Update(ctx context.Context, user *domain.User) (*domain.User, error) {
+func (r *UserRepo) Update(ctx context.Context, user *domain.User) error {
 	row, err := r.queries.UpdateUser(ctx, db.UpdateUserParams{
 		ID:            user.ID,
 		Name:          user.Name,
@@ -110,19 +110,41 @@ func (r *UserRepo) Update(ctx context.Context, user *domain.User) (*domain.User,
 		AvatarUrl:     pgutil.NilIfEmpty(user.AvatarURL),
 		EmailVerified: user.EmailVerified,
 	})
+
 	if err != nil {
-		logger.Error("failed to update user", err, zap.String("user_id", user.ID.String()))
-		return nil, fmt.Errorf("updating user %s: %w", user.ID, err)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			logger.Info("email already registered", zap.String("email", user.Email))
+			return errPkg.ErrEmailAlreadyRegistered
+		}
+		logger.Error("failed to update user", err, zap.String("email", user.Email))
+		return err
 	}
 
-	logger.Info("user updated", zap.String("user_id", row.ID.String()))
+	// Update the provided user struct with DB-returned values
+	user.Name = row.Name
+	user.Email = row.Email
+	if row.PasswordHash != nil {
+		user.PasswordHash = *row.PasswordHash
+	} else {
+		user.PasswordHash = ""
+	}
+	if row.GoogleID != nil {
+		user.GoogleID = *row.GoogleID
+	} else {
+		user.GoogleID = ""
+	}
+	if row.AvatarUrl != nil {
+		user.AvatarURL = *row.AvatarUrl
+	} else {
+		user.AvatarURL = ""
+	}
+	user.EmailVerified = row.EmailVerified
+	user.CreatedAt = row.CreatedAt
+	user.UpdatedAt = row.UpdatedAt
 
-	return domain.NewUser(
-		row.ID, row.Name, row.Email,
-		row.PasswordHash, row.GoogleID, row.AvatarUrl,
-		row.EmailVerified,
-		row.CreatedAt, row.UpdatedAt,
-	), nil
+	logger.Info("user updated", zap.String("user_id", row.ID.String()))
+	return nil
 }
 
 func (r *UserRepo) SoftDelete(ctx context.Context, id uuid.UUID) error {
@@ -136,17 +158,17 @@ func (r *UserRepo) SoftDelete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (r *UserRepo) List(ctx context.Context, limit, offset int32) ([]domain.User, error) {
+func (r *UserRepo) List(ctx context.Context, limit, offset int) ([]*domain.User, error) {
 	rows, err := r.queries.ListUsers(ctx, db.ListUsersParams{
-		Limit:  limit,
-		Offset: offset,
+		Limit:  int32(limit),
+		Offset: int32(offset),
 	})
 	if err != nil {
-		logger.Error("failed to list users", err, zap.Int32("limit", limit), zap.Int32("offset", offset))
+		logger.Error("failed to list users", err, zap.Int("limit", limit), zap.Int("offset", offset))
 		return nil, fmt.Errorf("listing users: %w", err)
 	}
 
-	users := make([]domain.User, len(rows))
+	users := make([]*domain.User, len(rows))
 	for i, row := range rows {
 		u := domain.NewUser(
 			row.ID, row.Name, row.Email,
@@ -154,9 +176,9 @@ func (r *UserRepo) List(ctx context.Context, limit, offset int32) ([]domain.User
 			row.EmailVerified,
 			row.CreatedAt, row.UpdatedAt,
 		)
-		users[i] = *u
+		users[i] = u
 	}
 
-	logger.Info("users listed", zap.Int("count", len(users)), zap.Int32("limit", limit), zap.Int32("offset", offset))
+	logger.Info("users listed", zap.Int("count", len(users)), zap.Int("limit", limit), zap.Int("offset", offset))
 	return users, nil
 }
