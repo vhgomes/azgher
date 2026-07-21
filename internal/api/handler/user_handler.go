@@ -60,13 +60,14 @@ func (h *UserHandler) GetById(c fiber.Ctx) error {
 		})
 	}
 
-	if _, err := uuid.Parse(id); err != nil {
+	idUser, err := uuid.Parse(id)
+	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "invalid uuid format",
 		})
 	}
 
-	user, err := h.UserService.ById(c.Context(), id)
+	user, err := h.UserService.ById(c.Context(), idUser)
 	if err != nil {
 		if errors.Is(err, errPkg.ErrUserNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
