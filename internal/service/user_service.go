@@ -56,19 +56,13 @@ func (s *UserService) Create(ctx context.Context, req dto.CreateUserRequest) err
 	return nil
 }
 
-func (s *UserService) ById(ctx context.Context, id string) (*domain.User, error) {
-	logger.Info("fetching user by id", zap.String("id", id))
+func (s *UserService) ById(ctx context.Context, id uuid.UUID) (*domain.User, error) {
+	logger.Info("fetching user by id", zap.String("id", id.String()))
 
-	userID, err := uuid.Parse(id)
-	if err != nil {
-		logger.Error("failed to parse user id", err)
-		return nil, err
-	}
-
-	user, err := s.repo.ByID(ctx, userID)
+	user, err := s.repo.ByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, errPkg.ErrUserNotFound) {
-			logger.Info("user not found", zap.String("id", id))
+			logger.Info("user not found", zap.String("id", id.String()))
 		} else {
 			logger.Error("failed to fetch user by id", err)
 		}
