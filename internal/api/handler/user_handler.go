@@ -145,8 +145,13 @@ func (h *UserHandler) Update(c fiber.Ctx) error {
 	}
 
 	err := h.UserService.Update(c.Context(), req)
+	if errors.Is(err, errPkg.ErrUserNotFound) {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "user not found"})
+	}
+	if errors.Is(err, errPkg.ErrEmailAlreadyRegistered) {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "email already registered"})
+	}
 	if err != nil {
-		logger.Error("failed to update user", err, zap.String("email", req.Email))
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "internal error",
 		})
