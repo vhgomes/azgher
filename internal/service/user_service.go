@@ -140,6 +140,11 @@ func (s *UserService) Update(ctx context.Context, req dto.UpdateUserRequest) err
 		DeletedAt:     existingUser.DeletedAt,
 	}
 
+	if updatedUser.Email != existingUser.Email {
+		updatedUser.EmailVerified = false
+		// TODO: Fazer logica para enviar email
+	}
+
 	err = s.repo.Update(ctx, updatedUser)
 	if err != nil {
 		logger.Error("failed to update user", err)
